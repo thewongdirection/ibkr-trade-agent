@@ -1,0 +1,63 @@
+# ibkr-trade-agent configuration
+# All risk limits live here. Read agent/settings.py for how these are loaded and validated.
+
+account:
+  # "paper" or "live". Flipping to "live" ALSO requires IBKR_ALLOW_LIVE=1 in the
+  # environment (two independent switches, by design). See risk/guardrails.py.
+  mode: paper
+  base_currency: USD
+
+strategy:
+  # "blend" = CAN SLIM fundamentals to pick, technicals to time (your chosen style).
+  style: blend
+  # Asset classes the agent is allowed to propose trades in.
+  asset_classes:
+    - stock
+    - etf
+    - option
+  # Default number of new ideas the recommend skill returns each review.
+  new_ideas_count: 20
+
+risk:
+  # Hard caps enforced BEFORE an order is ever staged. An order breaching any of these
+  # is rejected by risk/guardrails.py, not sent to IBKR.
+  max_order_notional_usd: 5000      # largest single staged order
+  max_position_weight_pct: 15       # no one position may exceed this % of equity
+  max_sector_weight_pct: 35         # no one sector may exceed this % of equity
+  max_new_positions_per_review: 3   # cap on fresh entries proposed per weekly run
+  cash_buffer_pct: 5                # keep at least this % of equity in cash
+  # CAN SLIM defensive rule. Stops are attached to every proposed entry.
+  stop_loss_pct: 8                  # 7-8% loss-cutting stop (tighten to 3 in a correction)
+  correction_stop_loss_pct: 3
+  take_profit_pct: 22               # take many 20-25% gains; hold the strongest leaders
+
+# Position-management thresholds the weekly review uses when grading existing holdings.
+management:
+  # Grade drops to AVOID -> propose exit. WATCH with these breaches -> propose trim.
+  trim_on_gain_pct: 22              # ring the register on strength
+  hard_exit_on_loss_pct: 8          # honor the stop
+  option_dte_warn: 10               # flag options within N days of expiry
+
+universe:
+  # Default screening universe for new ideas.
+  listing: US                       # US-listed common stock (method assumes NYSE/Nasdaq)
+  # Optional: restrict to a theme (e.g. "AI", "energy"); empty = broad market.
+  theme: ""
+  # Symbols to always include when grading (e.g. your core holdings). Populated at runtime
+  # from live positions; this list is an additional manual watchlist.
+  watchlist: []
+
+schedule:
+  # The weekly review cadence. A Routine / cron entry should fire this.
+  # Monday 08:30 America/New_York (pre-market). cron: 30 8 * * 1
+  cron: "30 8 * * 1"
+  timezone: America/New_York
+
+skills:
+  # Where scripts/setup_skills.sh clones the analysis skills. The agent loads SKILL.md
+  # from each of these on startup.
+  recommend_path: skills/can-slim-recommend
+  grader_path: skills/can-slim-grader
+
+journal:
+  db_path: journal/trade_journal.db

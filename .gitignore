@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Secrets & local config
+.env
+
+# Cloned analysis skills (populated by scripts/setup_skills.sh)
+skills/can-slim-recommend/
+skills/can-slim-grader/
+
+# Journal database and generated reports
+journal/*.db
+journal/*.db-*
+reports/
+*.html
+!skills/**/assets/*.html
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
