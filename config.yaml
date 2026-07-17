@@ -5,15 +5,17 @@ account:
   # "paper" or "live". Flipping to "live" ALSO requires IBKR_ALLOW_LIVE=1 in the
   # environment (two independent switches, by design). See risk/guardrails.py.
   mode: paper
-  base_currency: USD
+  # Account base currency. Your connected IBKR account reports SGD; keep this in sync so the
+  # risk caps below are interpreted in the account's own currency.
+  base_currency: SGD
   # Identity check — confirm the connected IBKR account is really YOURS before any trading.
   # These are NON-SENSITIVE markers only. NEVER put account numbers, passwords, or tokens
   # here (the connector never exposes them, and credentials must never enter the repo).
   # Run `python -m broker.session` to see your account's fingerprint, then set the markers
   # you recognize. When set, the agent refuses to operate if the live account doesn't match.
   verify:
-    expected_base_currency: ""   # e.g. "SGD" — your account's base currency
-    label: ""                    # a nickname you recognize, e.g. "my-ibkr-margin"
+    expected_base_currency: "SGD"  # your account's base currency (locks in identity)
+    label: ""                      # optional nickname you recognize, e.g. "my-ibkr-margin"
 
 strategy:
   # "blend" = CAN SLIM fundamentals to pick, technicals to time (your chosen style).
@@ -28,8 +30,9 @@ strategy:
 
 risk:
   # Hard caps enforced BEFORE an order is ever staged. An order breaching any of these
-  # is rejected by risk/guardrails.py, not sent to IBKR.
-  max_order_notional_usd: 5000      # largest single staged order
+  # is rejected by risk/guardrails.py, not sent to IBKR. Monetary caps are in the account
+  # base currency (account.base_currency, currently SGD).
+  max_order_notional: 5000          # largest single staged order (SGD)
   max_position_weight_pct: 15       # no one position may exceed this % of equity
   max_sector_weight_pct: 35         # no one sector may exceed this % of equity
   max_new_positions_per_review: 3   # cap on fresh entries proposed per weekly run

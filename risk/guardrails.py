@@ -89,11 +89,12 @@ def check_order_instruction(tool_input: dict[str, Any], settings: Settings) -> V
 
     mult = 100.0 if asset_class == "option" else 1.0
     notional = abs(qty) * price * mult
-    if side in BUY_SIDES and notional > settings.risk.max_order_notional_usd:
+    ccy = settings.base_currency
+    if side in BUY_SIDES and notional > settings.risk.max_order_notional:
         return Verdict(
             False,
-            f"order notional ${notional:,.0f} exceeds cap "
-            f"${settings.risk.max_order_notional_usd:,.0f}.",
+            f"order notional {notional:,.0f} {ccy} exceeds cap "
+            f"{settings.risk.max_order_notional:,.0f} {ccy}.",
         )
     return Verdict(True)
 
@@ -105,6 +106,7 @@ def evaluate_proposal(
 ) -> Verdict:
     """Portfolio-aware check on a structured proposal. Returns all breaches, not just the first."""
     r = settings.risk
+    ccy = settings.base_currency
     breaches: list[str] = []
 
     # SELLs reduce risk — only sanity-check them, don't cap.
@@ -126,9 +128,10 @@ def evaluate_proposal(
     notional = proposal.notional
 
     # Per-order notional cap.
-    if notional > r.max_order_notional_usd:
+    if notional > r.max_order_notional:
         breaches.append(
-            f"notional ${notional:,.0f} > per-order cap ${r.max_order_notional_usd:,.0f}"
+            f"notional {notional:,.0f} {ccy} > per-order cap "
+            f"{r.max_order_notional:,.0f} {ccy}"
         )
 
     # Cash buffer: buying must not drop cash below the buffer.
@@ -136,7 +139,7 @@ def evaluate_proposal(
     if portfolio.cash - notional < min_cash:
         breaches.append(
             f"would breach {r.cash_buffer_pct:.0f}% cash buffer "
-            f"(cash ${portfolio.cash:,.0f} - ${notional:,.0f} < ${min_cash:,.0f})"
+            f"(cash {portfolio.cash:,.0f} - {notional:,.0f} < {min_cash:,.0f} {ccy})"
         )
 
     # Resulting position weight cap.

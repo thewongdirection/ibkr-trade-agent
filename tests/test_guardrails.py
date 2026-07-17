@@ -16,7 +16,7 @@ from risk.guardrails import (
 
 def make_settings(**overrides) -> Settings:
     risk = RiskLimits(
-        max_order_notional_usd=5000,
+        max_order_notional=5000,
         max_position_weight_pct=15,
         max_sector_weight_pct=35,
         max_new_positions_per_review=3,

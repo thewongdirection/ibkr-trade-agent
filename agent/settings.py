@@ -25,7 +25,7 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class RiskLimits:
-    max_order_notional_usd: float
+    max_order_notional: float  # in account base currency
     max_position_weight_pct: float
     max_sector_weight_pct: float
     max_new_positions_per_review: int
@@ -92,7 +92,12 @@ def load_settings(config_path: str | os.PathLike[str] | None = None) -> Settings
     effective_mode = _resolve_mode(config_mode)
 
     risk = RiskLimits(
-        max_order_notional_usd=float(_require(risk_raw, "max_order_notional_usd", "risk")),
+        max_order_notional=float(
+            risk_raw.get("max_order_notional", risk_raw.get("max_order_notional_usd"))
+            if (risk_raw.get("max_order_notional") is not None
+                or risk_raw.get("max_order_notional_usd") is not None)
+            else _require(risk_raw, "max_order_notional", "risk")
+        ),
         max_position_weight_pct=float(_require(risk_raw, "max_position_weight_pct", "risk")),
         max_sector_weight_pct=float(_require(risk_raw, "max_sector_weight_pct", "risk")),
         max_new_positions_per_review=int(risk_raw.get("max_new_positions_per_review", 3)),

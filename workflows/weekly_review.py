@@ -91,7 +91,7 @@ def _size_entry(rec: Recommendation, portfolio: PortfolioState, settings: Settin
     """Size a new entry to the per-order notional cap and remaining cash buffer."""
     r = settings.risk
     investable_cash = max(0.0, portfolio.cash - portfolio.equity * (r.cash_buffer_pct / 100.0))
-    budget = min(r.max_order_notional_usd, investable_cash)
+    budget = min(r.max_order_notional, investable_cash)
     price = rec.buy_point or rec.price
     qty = 0 if price <= 0 else int(budget // price)
     return OrderProposal(
@@ -223,7 +223,7 @@ def format_brief(result: ReviewResult, settings: Settings) -> str:
     lines = [
         mode_banner(settings),
         f"Weekly review #{result.run_id} — market: {result.market_read}",
-        f"Equity ${result.exposure.get('equity', 0):,.0f} | "
+        f"Equity {result.exposure.get('equity', 0):,.0f} {settings.base_currency} | "
         f"cash {result.exposure.get('cash_pct', 0)}% | "
         f"invested {result.exposure.get('invested_pct', 0)}%",
         "",
