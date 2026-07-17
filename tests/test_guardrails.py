@@ -26,7 +26,8 @@ def make_settings(**overrides) -> Settings:
         take_profit_pct=22,
     )
     base = dict(
-        mode="paper", config_mode="paper", base_currency="USD", strategy_style="blend",
+        mode="paper", config_mode="paper", base_currency="USD", account_verify={},
+        strategy_style="blend",
         asset_classes=("stock", "etf", "option"), new_ideas_count=20, risk=risk,
         management={"hard_exit_on_loss_pct": 8, "trim_on_gain_pct": 22, "option_dte_warn": 10},
         universe={}, schedule={}, recommend_skill_path="skills/can-slim-recommend",

@@ -6,6 +6,14 @@ account:
   # environment (two independent switches, by design). See risk/guardrails.py.
   mode: paper
   base_currency: USD
+  # Identity check — confirm the connected IBKR account is really YOURS before any trading.
+  # These are NON-SENSITIVE markers only. NEVER put account numbers, passwords, or tokens
+  # here (the connector never exposes them, and credentials must never enter the repo).
+  # Run `python -m broker.session` to see your account's fingerprint, then set the markers
+  # you recognize. When set, the agent refuses to operate if the live account doesn't match.
+  verify:
+    expected_base_currency: ""   # e.g. "SGD" — your account's base currency
+    label: ""                    # a nickname you recognize, e.g. "my-ibkr-margin"
 
 strategy:
   # "blend" = CAN SLIM fundamentals to pick, technicals to time (your chosen style).

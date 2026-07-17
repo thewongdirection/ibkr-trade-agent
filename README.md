@@ -104,6 +104,17 @@ this repo.
 ## Running
 
 ```bash
+# Verify the IBKR connection + that it's YOUR account (fingerprint + identity check):
+python -m broker.session
+
+# Retrieve account info, positions, open orders, and trade history:
+python -m broker.account --all
+python -m broker.account --trades YEAR_TO_DATE
+
+# Check / switch paper<->live mode (see "Safety model" below):
+python -m broker.mode status
+python -m broker.mode live      # + export IBKR_ALLOW_LIVE=1 to actually arm live
+
 # One weekly review on demand (stages nothing without --stage):
 python -m workflows.weekly_review
 
@@ -111,21 +122,39 @@ python -m workflows.weekly_review
 python -m workflows.weekly_review --stage
 ```
 
+See [`docs/CONNECTING.md`](docs/CONNECTING.md) for how the IBKR connection works, why no
+credentials live in this repo, and how to verify the connected account is yours.
+
+### Account login & identity
+
+There is no password to store: the IBKR MCP connector is authorized via Claude's connector
+OAuth, so "login" here means verifying the connector is reachable and identifying the
+account. The connector **masks the account number and owner name**, so `python -m broker.session`
+establishes identity from a fingerprint you recognize (base currency, account inception date,
+positions, recent trades) and an optional marker you set in `config.yaml → account.verify`.
+With a marker set, the agent refuses to operate if the live account doesn't match.
+
 To run it automatically every week, point a Routine / cron entry at the same command — see
 `workflows/weekly_review.py` for the schedule contract.
 
 ## Layout
 
 ```
-agent/       Agent SDK runtime, settings loader, system prompt
+agent/       Agent SDK runtime, settings loader (paper/live interlock), system prompt
+broker/      IBKR connection, account retrieval, identity verify, mode switching
+  client.py    typed AccountSummary/Balance/Position/Trade/Order + parsers
+  session.py   connection + account-identity verification ("login")
+  account.py   CLI: account info, positions, orders, trade history
+  mode.py      CLI: paper<->live switch (honors the two-switch interlock)
 analysis/    portfolio analytics + CAN SLIM skill wiring
 risk/        guardrails: caps, paper/live gate, approval-shape checks
 journal/     SQLite trade + rationale log
 workflows/   weekly_review.py  (the scheduled entry point)
 skills/      CAN SLIM skills (populated by scripts/setup_skills.sh; git-ignored)
 scripts/     setup_skills.sh
-tests/       guardrail tests
-config.yaml  caps, universe, cadence, paper/live switch
+docs/        CONNECTING.md (IBKR connection, no-credentials policy, verification)
+tests/       guardrail, broker, and weekly-review tests
+config.yaml  caps, universe, cadence, paper/live switch, identity markers
 ```
 
 ## Status

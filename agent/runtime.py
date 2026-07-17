@@ -101,6 +101,28 @@ def build_agent(settings: Settings | None = None):
     return ClaudeSDKClient(options=options)
 
 
+def build_broker_client(settings: Settings | None = None):
+    """Return a live BrokerClient bound to the IBKR MCP connector.
+
+    TODO(connector): bind a ``ToolCaller`` to the real transport. In the hosted Agent SDK
+    loop that is the SDK's MCP invocation; standalone, construct an SDK MCP client for the
+    IBKR server and adapt its call method to ``(tool_name, args) -> dict``. Until that binding
+    exists this raises a clear, actionable error instead of silently returning empty data.
+    """
+    settings = settings or load_settings()
+
+    def _unbound_tool_caller(tool_name: str, args: dict):  # pragma: no cover - guard path
+        raise RuntimeError(
+            "No IBKR MCP transport is bound. Run inside a Claude session with the IBKR "
+            "connector attached, or wire an Agent SDK MCP client in build_broker_client() "
+            "(see TODO(connector))."
+        )
+
+    from broker.client import MCPBrokerClient
+
+    return MCPBrokerClient(_unbound_tool_caller)
+
+
 def mode_banner(settings: Settings) -> str:
     """A one-line human banner making the operating mode unmissable."""
     if settings.is_live:

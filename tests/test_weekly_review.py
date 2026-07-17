@@ -23,7 +23,8 @@ def settings(tmp_path):
         (d / "SKILL.md").write_text("stub")
     risk = RiskLimits(5000, 15, 35, 3, 5, 8, 3, 22)
     return Settings(
-        mode="paper", config_mode="paper", base_currency="USD", strategy_style="blend",
+        mode="paper", config_mode="paper", base_currency="USD", account_verify={},
+        strategy_style="blend",
         asset_classes=("stock", "etf", "option"), new_ideas_count=5, risk=risk,
         management={"hard_exit_on_loss_pct": 8, "trim_on_gain_pct": 22, "option_dte_warn": 10},
         universe={}, schedule={},

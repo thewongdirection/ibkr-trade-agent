@@ -40,6 +40,7 @@ class Settings:
     mode: str  # resolved effective mode: "paper" or "live"
     config_mode: str  # what config.yaml requested (before the env interlock)
     base_currency: str
+    account_verify: dict[str, Any]  # non-sensitive identity markers for the verify check
     strategy_style: str
     asset_classes: tuple[str, ...]
     new_ideas_count: int
@@ -110,6 +111,7 @@ def load_settings(config_path: str | os.PathLike[str] | None = None) -> Settings
         mode=effective_mode,
         config_mode=config_mode.lower(),
         base_currency=str(account.get("base_currency", "USD")),
+        account_verify=dict(account.get("verify", {}) or {}),
         strategy_style=str(strategy.get("style", "blend")),
         asset_classes=tuple(strategy.get("asset_classes", ["stock", "etf"])),
         new_ideas_count=int(strategy.get("new_ideas_count", 20)),
