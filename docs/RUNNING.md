@@ -190,24 +190,76 @@ Notes:
 
 ## 8. Also get the brief on Telegram (optional)
 
-Beyond the Claude chat + push, the brief can be delivered to a **Telegram chat** you control.
-It's opt-in and needs no code changes — just two environment variables:
+Beyond the Claude chat + push, the brief can be delivered to a **Telegram chat** you control —
+a phone alert independent of the Claude app. It's opt-in and needs no code changes, but it has
+**one non-obvious requirement** most people miss: because the bot posts to Telegram with a
+**direct outbound HTTPS call** (unlike the IBKR/FMP connectors, whose traffic is routed through
+Anthropic), the scheduled environment's **egress proxy will block it unless you allowlist
+`api.telegram.org`**. You need **all three** of the following, and they must live on the
+**environment the Routine uses** (see the "Environments" box below).
 
-1. In Telegram, message **@BotFather** → `/newbot` → copy the **bot token**.
-2. Message your new bot once, then open
-   `https://api.telegram.org/bot<token>/getUpdates` and copy your **chat id**.
-3. Set both (in `.env` for local runs, **and in the Routine's environment** for the scheduled
-   bot — the scheduled session doesn't read your local `.env`):
+### Step 1 — Create the bot and get your two values
+1. In Telegram, message **@BotFather** → `/newbot` → copy the **bot token** (looks like
+   `123456:ABC-DEF...`).
+2. **Message your new bot once** (send it any text). A bot can never open a conversation with
+   you, so without this first message every send fails with `chat not found`.
+3. Open `https://api.telegram.org/bot<token>/getUpdates` in a browser and copy the
+   `result[].message.chat.id` — that's your **chat id** (a number like `987654321`).
 
-   ```bash
-   TELEGRAM_BOT_TOKEN=123456:ABC-your-token
-   TELEGRAM_CHAT_ID=987654321
-   ```
+### Step 2 — Set the two environment variables **on the environment**
+Set them in `.env` for local hand-runs, **and** on the scheduled Routine's environment
+(claude.ai → the environment's **Environment variables**) — the scheduled session does **not**
+read your local `.env`:
 
-That's it. When both are set, every run also sends the brief to that chat via
-`reporting.notify.deliver_brief()`. When they're unset it's a silent no-op, and a Telegram
-outage never fails the review (delivery errors are logged, not raised). Secrets stay out of
-git — `.env` is git-ignored and only `.env.example` placeholders are tracked.
+```bash
+TELEGRAM_BOT_TOKEN=123456:ABC-your-token
+TELEGRAM_CHAT_ID=987654321
+```
+
+Watch for stray spaces or wrapping quotes around the values — they cause silent failures.
+
+### Step 3 — Allowlist `api.telegram.org` (the step everyone forgets)
+On the **same environment**, open **Network access / Allowed domains** and add:
+
+```
+api.telegram.org
+```
+
+The policy must be the **custom allowlist** mode (not a "trusted-only" mode that ignores your
+additions). Enter the bare host — `api.telegram.org`, **not** a full URL like
+`https://api.telegram.org/...`. Without this, `getMe`/`sendMessage` fail with a proxy
+`403 Forbidden` / "Tunnel connection failed" even though the token and chat id are perfect.
+
+> ### 📦 Environments — where this config actually lives
+> A **Routine fires a fresh, headless session in a specific *environment***, and that
+> environment — **not** your interactive chat session — is what holds the env vars and the
+> network allowlist. Two consequences that bite people:
+> - **Your interactive chat can't validate this setup.** A normal chat runs in a *different*
+>   environment, so it won't see the Routine's env vars and may 403 on Telegram even when the
+>   Routine is configured correctly. Test by firing the Routine (or a one-off test) **in the
+>   Routine's environment**, not by checking from a chat.
+> - **Set the config on the *right* environment.** Confirm which environment your Routine uses
+>   (ask the assistant to "show my Routine's environment") and put the two env vars + the
+>   `api.telegram.org` allowlist **there**. Editing a different environment does nothing.
+> - **Connectors travel with the Routine, not the environment.** If you move the Routine to a
+>   different environment, the IBKR + FMP connectors stay attached — but you must re-do the
+>   Telegram env vars + allowlist on the new environment (they're environment-scoped).
+
+### Step 4 — Test it
+Ask the assistant to **"fire a Telegram delivery test on the Routine's environment."** If the
+test message lands in your chat, you're done. If not:
+- **Proxy 403 / tunnel error** → `api.telegram.org` isn't allowlisted on that environment (Step 3).
+- **`chat not found`** → you didn't message the bot first, or the chat id is wrong (Step 1).
+- **Nothing at all** → the env vars aren't set on that environment (Step 2).
+
+### How it behaves
+When both vars are set, every run also sends the brief to that chat via
+`reporting.notify.deliver_brief()` (wired in as **step 8** of the Routine prompt). When they're
+unset it's a silent no-op, and a Telegram outage never fails the review — delivery errors are
+logged, not raised. Secrets stay out of git: `.env` is git-ignored and only `.env.example`
+placeholders are tracked. The **chat id does not change** if you swap the bot token later
+(it identifies the chat, not the bot) — but a brand-new bot still needs the one-time
+"message it once" from Step 1.
 
 ---
 
@@ -238,6 +290,9 @@ git — `.env` is git-ignored and only `.env.example` placeholders are tracked.
 | **No new ideas / grading errors** | FMP connector missing, or CAN SLIM skills not installed | Attach FMP; run `scripts/setup_skills.sh` |
 | Orders **not appearing for approval** | Ran without `--stage`, or in dry-run chat | Re-run with `--stage` (or tell the assistant to stage) |
 | Wrong **run time** | cron is UTC and the ET offset shifts with DST | Use `30 12 * * 1-5` (EDT) / `30 13 * * 1-5` (EST) |
+| **No Telegram message**, proxy `403` / tunnel error | `api.telegram.org` not allowlisted on the Routine's environment | Add `api.telegram.org` (bare host) to that environment's Allowed domains ([§8](#8-also-get-the-brief-on-telegram-optional) Step 3) |
+| **No Telegram message**, `chat not found` | Never messaged the bot, or wrong chat id | Message the bot once, re-read the id via `getUpdates` ([§8](#8-also-get-the-brief-on-telegram-optional) Step 1) |
+| **No Telegram message**, nothing at all | `TELEGRAM_*` vars set on the wrong environment (or not at all) | Set both vars on the environment your Routine actually uses ([§8](#8-also-get-the-brief-on-telegram-optional) Step 2 + Environments box) |
 
 ---
 

@@ -36,7 +36,12 @@ Routine run does **not** inherit your interactive connectors — this is the #1 
    with a valid pivot survive.
 5. **Size + risk-check** every buy against the `config.yaml` caps; attach a stop to each entry.
 6. **Stage** survivors for one-tap approval (never executes); **journal** every decision.
-7. **Deliver** — HTML dashboard + concise chat brief + completion push.
+7. **Deliver** — HTML dashboard + concise chat brief + completion push, and (optional) the same
+   brief to a **Telegram chat** you control — see [docs/RUNNING.md §8](docs/RUNNING.md#8-also-get-the-brief-on-telegram-optional).
+
+> **Setting this up?** [docs/RUNNING.md](docs/RUNNING.md) is the authoritative, step-by-step
+> guide: the two connectors and **where** to attach them, the Routine/schedule, paper-vs-live,
+> and the optional Telegram delivery (including the easy-to-miss `api.telegram.org` allowlist).
 
 ---
 
