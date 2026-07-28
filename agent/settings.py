@@ -112,6 +112,15 @@ def load_settings(config_path: str | os.PathLike[str] | None = None) -> Settings
         rp = Path(raw)
         return rp if rp.is_absolute() else REPO_ROOT / rp
 
+    schedule_raw = dict(data.get("schedule", {}))
+    # Validate the cadence now so a bad frequency/time fails at load, not at run time.
+    from agent.schedule import ScheduleError, resolve_schedule
+
+    try:
+        resolve_schedule(schedule_raw)
+    except ScheduleError as exc:
+        raise ConfigError(str(exc)) from exc
+
     return Settings(
         mode=effective_mode,
         config_mode=config_mode.lower(),
@@ -123,7 +132,7 @@ def load_settings(config_path: str | os.PathLike[str] | None = None) -> Settings
         risk=risk,
         management=dict(data.get("management", {})),
         universe=dict(data.get("universe", {})),
-        schedule=dict(data.get("schedule", {})),
+        schedule=schedule_raw,
         recommend_skill_path=_resolve(
             skills.get("recommend_path", ""), "skills/can-slim-recommend"
         ),

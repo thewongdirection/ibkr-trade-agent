@@ -15,7 +15,7 @@ dev = [
 ]
 
 [project.scripts]
-weekly-review = "workflows.weekly_review:main"
+daily-review = "workflows.daily_review:main"
 
 [build-system]
 requires = ["setuptools>=68"]

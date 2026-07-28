@@ -1,1 +1,1 @@
-"""Scheduled workflows (the weekly review entry point)."""
+"""Scheduled workflows (daily_review is the review entry point; cadence is configurable)."""

@@ -35,14 +35,14 @@ risk:
   max_order_notional: 5000          # largest single staged order (SGD)
   max_position_weight_pct: 15       # no one position may exceed this % of equity
   max_sector_weight_pct: 35         # no one sector may exceed this % of equity
-  max_new_positions_per_review: 3   # cap on fresh entries proposed per weekly run
+  max_new_positions_per_review: 3   # cap on fresh entries proposed per review run
   cash_buffer_pct: 5                # keep at least this % of equity in cash
   # CAN SLIM defensive rule. Stops are attached to every proposed entry.
   stop_loss_pct: 8                  # 7-8% loss-cutting stop (tighten to 3 in a correction)
   correction_stop_loss_pct: 3
   take_profit_pct: 22               # take many 20-25% gains; hold the strongest leaders
 
-# Position-management thresholds the weekly review uses when grading existing holdings.
+# Position-management thresholds the review uses when grading existing holdings.
 management:
   # Grade drops to AVOID -> propose exit. WATCH with these breaches -> propose trim.
   trim_on_gain_pct: 22              # ring the register on strength
@@ -59,10 +59,20 @@ universe:
   watchlist: []
 
 schedule:
-  # The weekly review cadence. A Routine / cron entry should fire this.
-  # Monday 08:30 America/New_York (pre-market). cron: 30 8 * * 1
-  cron: "30 8 * * 1"
+  # How often the review runs. One of: daily (default) | weekly | biweekly | monthly.
+  # `python -m agent.schedule` prints the exact UTC cron to put in your Routine for this
+  # cadence, accounting for daylight saving. See docs/RUNNING.md §5C.
+  frequency: daily
+  # Local wall-clock time to run, "HH:MM" (pre-market recommended), in the timezone below.
+  run_time: "08:30"
   timezone: America/New_York
+  # For weekly/biweekly: which weekday (mon..sun). Ignored for daily/monthly.
+  day_of_week: mon
+  # For monthly: day-of-month, 1-28 (kept <=28 so it exists in every month). Ignored otherwise.
+  day_of_month: 1
+  # Optional explicit UTC cron override. If set (non-empty), it wins over the derived schedule
+  # above — use it only if you need a cadence the frequency options can't express.
+  cron: ""
 
 skills:
   # Where scripts/setup_skills.sh clones the analysis skills. The agent loads SKILL.md

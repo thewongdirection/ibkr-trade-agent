@@ -274,10 +274,22 @@ def main(argv: list[str] | None = None) -> int:
                         help="Stage accepted proposals for approval (default: dry run).")
     parser.add_argument("--out", default=None, help="Write the HTML dashboard to this path.")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--force", action="store_true",
+                        help="Run even if the configured cadence would skip today (biweekly gate).")
     args = parser.parse_args(argv)
 
     settings = load_settings(args.config)
     print(mode_banner(settings))
+
+    # Honour the configured cadence: biweekly fires a weekly cron and self-gates here.
+    from datetime import date
+
+    from agent.schedule import resolve_schedule
+    plan = resolve_schedule(settings.schedule)
+    if plan.needs_run_gate and not plan.should_run_on(date.today()) and not args.force:
+        print(f"Cadence is {plan.frequency} ({plan.description}); today is an off-period. "
+              "Skipping. Use --force to run anyway.")
+        return 0
 
     ctx = DailyContext()  # TODO(connector): back with IBKR/FMP + skills + signal feed.
     try:
@@ -286,7 +298,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nCannot run end-to-end yet: {exc}", file=sys.stderr)
         return 2
 
-    print(chat_brief(result, settings))
+    brief = chat_brief(result, settings)
+    print(brief)
+
+    # Optional out-of-band delivery (Telegram, if configured). Never fails the run.
+    from reporting.notify import deliver_brief
+    for channel, ok in deliver_brief(brief).items():
+        print(f"[deliver] {channel}: {'sent' if ok else 'FAILED'}", file=sys.stderr)
+
     if args.out:
         from pathlib import Path
         Path(args.out).write_text(build_dashboard(result, settings, "(cli run)"))

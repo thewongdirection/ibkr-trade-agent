@@ -34,11 +34,20 @@ a cap. Attach a loss-cutting stop to every entry.
 **6. Stage** the surviving orders with `create_order_instruction` for one-tap approval. Never
 submit/execute. **Journal** every grade, staged order, and rejection.
 
-**7. Deliver three ways:**
+**7. Deliver:**
 - Render the self-contained HTML dashboard (`reporting/dashboard.py`).
 - Post a concise **chat brief**: market read, holdings actions, orders to approve (CAN SLIM
   rationale only), and any warnings.
+- If Telegram is configured (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in the environment),
+  also send the same brief there via `reporting.notify.deliver_brief(brief)` — it no-ops
+  silently when unconfigured and never fails the run.
 - The push notification is sent on completion with the count of actions needing approval.
+
+**Cadence:** this prompt is the review body; how often it fires is set by the Routine's cron,
+derived from `config.yaml → schedule` (default **daily**, weekdays). For a **biweekly** cadence
+the Routine fires weekly and the run self-gates to even ISO weeks — if it's an off week, note
+that and stage nothing. `python -m agent.schedule` prints the exact cron for the configured
+cadence.
 
 Justify every buy/sell only in CAN SLIM terms. Pair every entry with its exit rule. Never
 display the account number or owner name. If anything blocks a full run, say what and why
