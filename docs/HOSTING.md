@@ -65,10 +65,23 @@ stay authorized.)
 
 ---
 
-## Path B — Self-hosted VM (for future hands-off execution)
+## Path B — Self-hosted VM (the working path for UNATTENDED runs)
 
-Only needed if you later want the bot to **execute certain trades unattended**. This is where
-`ib_async` + **IB Gateway** come in, and it is a real operational commitment.
+**Read this if you want the review to run without you.** The hosted Routine (Path A) cannot do
+it today: the IBKR **MCP connector does not respond in a headless scheduled session** — the run
+calls IBKR and never gets an answer, so it ends silently (isolated by bisect; see
+[RUNNING.md](RUNNING.md) "Known limitation"). The connector works fine *interactively*, so Path A
+remains the right choice when you're there to kick it off.
+
+This path replaces that transport: `ib_async` talking to a local **IB Gateway** over a socket,
+which has no such limitation. It is a real operational commitment (a VM, IB Gateway kept alive,
+IBKR's daily re-auth and 2FA), but it is the one that runs on its own.
+
+**The code is in place** — `broker/gateway.py` implements the same `BrokerClient` protocol as
+the MCP path, so the review, risk layer, dashboard and journal are untouched. Switching is a
+config change, not a code change. Orders are staged with **`transmit=False`**: they appear in
+TWS/Gateway pre-filled and inert, waiting for you to press Transmit. There is no code path that
+sets `transmit=True`.
 
 ### Components
 ```
@@ -107,9 +120,37 @@ Only needed if you later want the bot to **execute certain trades unattended**. 
      manager (systemd `EnvironmentFile=` with `chmod 600`, Docker secrets, or Vault).
    - `.env` stays git-ignored (already enforced). `IBKR_ALLOW_LIVE` only on the box you intend
      to trade live from.
-5. **Point the app at the gateway.** Bind the broker client to `ib_async` on
-   `127.0.0.1:4002` (paper) / `4001` (live) instead of the hosted MCP connector — this is the
-   `TODO(connector)` seam in `agent/runtime.py::build_broker_client`.
+5. **Point the app at the gateway.** This is implemented — flip the transport in `config.yaml`
+   and install the extra:
+   ```bash
+   pip install -e ".[gateway]"      # adds ib_async
+   ```
+   ```yaml
+   gateway:
+     transport: gateway       # was: mcp
+     host: 127.0.0.1
+     port: 4002               # Gateway paper 4002 | live 4001 | TWS paper 7497 | live 7496
+     client_id: 17
+     readonly: true           # set false only when you want the review to stage orders
+   ```
+   Verify before scheduling anything:
+   ```bash
+   gateway-check --check      # or: python -m broker.gateway --check
+   ```
+   It prints the effective mode, the target port, and — once connected — net liquidation and
+   positions. Then the normal commands work unattended:
+   ```bash
+   account-summary            # reads through the gateway now
+   daily-review               # dry run
+   daily-review --stage       # stage orders into TWS for your approval
+   ```
+
+   **Two interlocks you can't bypass by accident:**
+   - **Mode/port pairing is enforced.** A `paper` config refuses to connect to a live port
+     (4001/7496) and vice versa, so a stray port number can't put you on the live account.
+     Live still *also* requires `IBKR_ALLOW_LIVE=1` — three switches in total.
+   - **`readonly: true` blocks order placement at the API level.** Staging requires explicitly
+     setting it to `false`, and even then orders are never transmitted.
 6. **Schedule it.** A systemd timer beats cron for logging/retries:
    ```ini
    # /etc/systemd/system/ibkr-review.timer

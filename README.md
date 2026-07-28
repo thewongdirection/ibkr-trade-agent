@@ -185,6 +185,8 @@ To run it automatically each weekday, point a Routine / cron entry at
 agent/       Agent SDK runtime, settings loader (paper/live interlock), system prompt
 broker/      IBKR connection, account retrieval, identity verify, mode switching
   client.py    typed AccountSummary/Balance/Position/Trade/Order + parsers
+  gateway.py   self-hosted transport: local IB Gateway/TWS via ib_async (unattended runs;
+               stages with transmit=False, enforces the mode/port interlock)
   session.py   connection + account-identity verification ("login")
   account.py   CLI: account info, positions, orders, trade history
   watchlist.py CLI + manager: create/edit/delete IBKR watchlists (gated write)

@@ -13,12 +13,18 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+# Self-hosted transport: talk to a local IB Gateway / TWS instead of the MCP connector.
+# Needed only for unattended runs -- see docs/RUNNING.md and docs/HOSTING.md Path B.
+gateway = [
+    "ib_async>=1.0",
+]
 
 [project.scripts]
 daily-review = "workflows.daily_review:main"
 account-summary = "broker.account:main"
 watchlist = "broker.watchlist:main"
 telegram-bot = "reporting.telegram_bot:main"
+gateway-check = "broker.gateway:main"
 
 [build-system]
 requires = ["setuptools>=68"]

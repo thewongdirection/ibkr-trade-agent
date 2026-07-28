@@ -17,6 +17,29 @@ account:
     expected_base_currency: "SGD"  # your account's base currency (locks in identity)
     label: ""                      # optional nickname you recognize, e.g. "my-ibkr-margin"
 
+# Self-hosted transport (optional). Set transport: gateway to talk to a locally-running
+# IB Gateway / TWS via ib_async instead of the Claude MCP connector. This is the path for
+# UNATTENDED runs: the MCP connector does not respond in a headless scheduled session
+# (see docs/RUNNING.md "Known limitation"), whereas the Gateway does.
+#   pip install -e ".[gateway]"      # installs ib_async
+#   python -m broker.gateway --check # verify connectivity
+# Orders are ALWAYS staged with transmit=False — they appear in TWS awaiting your click and
+# can never be sent to the exchange by this code.
+gateway:
+  # "mcp" (default; interactive Claude sessions) or "gateway" (self-hosted IB Gateway/TWS).
+  transport: mcp
+  host: 127.0.0.1
+  # Gateway paper 4002 | Gateway live 4001 | TWS paper 7497 | TWS live 7496.
+  # A paper config refuses to connect to a live port, and vice versa.
+  port: 4002
+  client_id: 17
+  # Optional; only needed if your login manages several accounts.
+  account: ""
+  # true blocks order placement at the API level. Set false only when you want the review to
+  # stage orders into TWS for approval.
+  readonly: true
+  timeout: 20
+
 strategy:
   # "blend" = CAN SLIM fundamentals to pick, technicals to time (your chosen style).
   style: blend

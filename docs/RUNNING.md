@@ -136,9 +136,9 @@ a dry run.
 > **Options if you need an unattended review:**
 > 1. **Run it interactively** — ask the assistant to "run the daily IBKR review" in a chat.
 >    Fully working today; you just have to start it.
-> 2. **Self-host** — [HOSTING.md](HOSTING.md) Path B: a VM with IB Gateway + `ib_async`, binding
->    the `TODO(connector)` transport in `agent/runtime.py`. Unattended, but real infrastructure
->    and IBKR's 2FA/session rules apply.
+> 2. **Self-host via IB Gateway — implemented, see [§10](#10-self-hosted-transport-ib-gateway).**
+>    `transport: gateway` swaps the MCP connector for a direct socket to a local IB Gateway,
+>    which has no headless limitation. Real infrastructure, but it runs on its own.
 > 3. **Keep the Routine for the non-IBKR half** — market screening and delivery on schedule,
 >    with the account read done interactively.
 >
@@ -341,6 +341,51 @@ Two things to know:
   available rather than failing. The last-seen message id is persisted (next to the journal db)
   so `--once` never re-answers an old message. Because a Routine cron fires at most hourly, the
   `--loop`/self-hosted path is what gives near-real-time replies.
+
+## 10. Self-hosted transport (IB Gateway)
+
+The bot can reach your account two ways. Which one it uses is `gateway.transport` in
+`config.yaml` — everything downstream (review, risk caps, dashboard, journal) is identical.
+
+| | `mcp` (default) | `gateway` |
+|---|---|---|
+| Reaches IBKR via | the Claude IBKR connector | a local **IB Gateway / TWS** socket (`ib_async`) |
+| Interactive chat runs | ✅ works | ✅ works |
+| **Scheduled/headless runs** | ❌ **connector doesn't respond** | ✅ works |
+| Setup needed | attach the connector | a VM + IB Gateway kept logged in |
+
+Use `gateway` when you want the review to run **without you**. Setup:
+
+```bash
+pip install -e ".[gateway]"        # installs ib_async
+```
+```yaml
+gateway:
+  transport: gateway   # was: mcp
+  host: 127.0.0.1
+  port: 4002           # Gateway paper 4002 | live 4001 | TWS paper 7497 | live 7496
+  client_id: 17
+  readonly: true       # set false only when you want the review to STAGE orders
+```
+```bash
+gateway-check --check              # verify connectivity before scheduling anything
+account-summary                    # now reads through the gateway
+daily-review --stage               # stage orders into TWS for approval
+```
+
+**How "staging" works here.** Orders are placed with **`transmit=False`** — IBKR's native
+stage-for-review. The order appears in TWS pre-filled and inert; it is not working, will never
+fill on its own, and *you* press Transmit. `transmit=True` appears nowhere in this codebase.
+
+**Three independent switches guard live trading:**
+1. `account.mode: live` in config, **and**
+2. `IBKR_ALLOW_LIVE=1` in the environment, **and**
+3. a live **port** (4001/7496) — a paper config refuses to connect to a live port and vice
+   versa, so a mistyped port can't reach your live account.
+
+Plus `readonly: true` (the default) blocks order placement at the API level entirely.
+
+Full VM/IBC/2FA walkthrough and the systemd timer: [HOSTING.md](HOSTING.md) → **Path B**.
 
 ---
 

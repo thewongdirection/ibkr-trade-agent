@@ -108,15 +108,30 @@ def build_agent(settings: Settings | None = None):
     return ClaudeSDKClient(options=options)
 
 
-def build_broker_client(settings: Settings | None = None):
-    """Return a live BrokerClient bound to the IBKR MCP connector.
+def transport_name(settings: Settings) -> str:
+    """Which broker transport config asks for: ``"mcp"`` (default) or ``"gateway"``."""
+    raw = (getattr(settings, "raw", {}) or {}).get("gateway", {}) or {}
+    return str(raw.get("transport", "mcp")).strip().lower()
 
-    TODO(connector): bind a ``ToolCaller`` to the real transport. In the hosted Agent SDK
-    loop that is the SDK's MCP invocation; standalone, construct an SDK MCP client for the
-    IBKR server and adapt its call method to ``(tool_name, args) -> dict``. Until that binding
-    exists this raises a clear, actionable error instead of silently returning empty data.
+
+def build_broker_client(settings: Settings | None = None):
+    """Return a live BrokerClient for the configured transport.
+
+    ``gateway`` → a direct socket connection to a local IB Gateway/TWS via ib_async. This is
+    the path that works **unattended**, because the MCP connector does not respond in a
+    headless scheduled session (docs/RUNNING.md, "Known limitation").
+
+    ``mcp`` (default) → the Claude IBKR connector. TODO(connector): bind a ``ToolCaller`` to
+    the real transport; in the hosted Agent SDK loop that is the SDK's MCP invocation.
+    Until that binding exists it raises a clear, actionable error rather than returning
+    silently-empty data.
     """
     settings = settings or load_settings()
+
+    if transport_name(settings) == "gateway":
+        from broker.gateway import build_gateway_client
+
+        return build_gateway_client(settings)
 
     def _unbound_tool_caller(tool_name: str, args: dict):  # pragma: no cover - guard path
         raise RuntimeError(
