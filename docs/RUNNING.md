@@ -310,37 +310,30 @@ Symbols are resolved to IBKR contract ids automatically (`search_contracts`); an
 can't be resolved is reported, not silently dropped. `edit`/`add`/`remove` use IBKR's
 full-replace semantics under the hood (read → modify → write), so lists never get clobbered.
 
-### C. Two-way Telegram bot — text the bot, it replies
-The same Telegram bot that delivers your brief can also **take commands**. Message it:
+### C. Telegram — a one-way update each run
 
-| Command | Does |
-|---|---|
-| `/account` | balances, exposure, P&L, top positions |
-| `/positions` | full positions list |
-| `/watchlists` | your watchlists |
-| `/watchlist <name>` | show one list's instruments |
-| `/watch <name> <SYM…>` | add symbols (creates the list if new) |
-| `/unwatch <name> <SYM…>` | remove symbols |
-| `/delete <name>` | delete a list (asks you to confirm) |
-| `/help` | the command list |
+The scheduled bot **sends you an update; it does not take commands.** Every run delivers:
 
-Run the poller:
+1. a **short text summary** you can read on a lock screen — mode, market read, equity/cash,
+   holdings actions, orders awaiting approval with a one-line CAN SLIM reason, and warnings;
+2. the **full dashboard as a PDF attachment** (falls back to attaching the HTML when no
+   browser is available to render it).
+
+That's `reporting.notify.deliver_report()`, which the review calls for you:
+
 ```bash
-telegram-bot --once     # drain any pending commands and exit (drive from a scheduler)
-telegram-bot --loop     # long-poll continuously (for a self-hosted process)
+daily-review --stage                      # runs, then sends summary + dashboard PDF
+python -m reporting.notify "any message"  # send an ad-hoc line
+```
+```python
+from reporting.notify import deliver_report
+deliver_report(brief, dashboard_path="dashboard.html")
 ```
 
-Two things to know:
-- **Only your chat can command it.** Every message whose `chat.id` ≠ `TELEGRAM_CHAT_ID` is
-  ignored and logged, so a stranger who finds the bot can't read your account or touch your
-  lists. Commands are **read + watchlist only** — there is no command that places or approves a
-  trade; order flow stays in the reviewed, human-approved path.
-- **It needs the connector bound to answer with live data** — same requirement as everything
-  else here (`TODO(connector)`): run it inside a Claude session with the IBKR connector, or
-  bind an SDK MCP transport for a standalone process. Unbound, it replies that data isn't
-  available rather than failing. The last-seen message id is persisted (next to the journal db)
-  so `--once` never re-answers an old message. Because a Routine cron fires at most hourly, the
-  `--loop`/self-hosted path is what gives near-real-time replies.
+Delivery never fails the run: a Telegram outage is logged rather than raised, and a missing
+PDF converter just means the HTML is attached instead.
+
+---
 
 ## 10. Self-hosted transport (IB Gateway)
 

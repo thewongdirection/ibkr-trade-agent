@@ -326,14 +326,23 @@ def main(argv: list[str] | None = None) -> int:
     brief = chat_brief(result, settings)
     print(brief)
 
-    # Optional out-of-band delivery (Telegram, if configured). Never fails the run.
-    for channel, ok in deliver_brief(brief).items():
-        print(f"[deliver] {channel}: {'sent' if ok else 'FAILED'}", file=sys.stderr)
+    # Always render the dashboard so it can ride along with the Telegram summary; keep it in a
+    # temp file when the caller didn't ask for one on disk.
+    import tempfile
+    from pathlib import Path
 
+    dashboard_path = args.out or str(
+        Path(tempfile.gettempdir()) / f"ibkr-dashboard-{result.run_id}.html")
+    Path(dashboard_path).write_text(build_dashboard(result, settings, "(cli run)"))
     if args.out:
-        from pathlib import Path
-        Path(args.out).write_text(build_dashboard(result, settings, "(cli run)"))
         print(f"\nDashboard written to {args.out}")
+
+    # Optional out-of-band delivery (Telegram, if configured): the summary plus the dashboard
+    # as a PDF attachment. Never fails the run.
+    from reporting.notify import deliver_report
+
+    for channel, ok in deliver_report(brief, dashboard_path=dashboard_path).items():
+        print(f"[deliver] {channel}: {'sent' if ok else 'FAILED'}", file=sys.stderr)
     return 0
 
 

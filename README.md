@@ -36,8 +36,9 @@ Routine run does **not** inherit your interactive connectors — this is the #1 
    with a valid pivot survive.
 5. **Size + risk-check** every buy against the `config.yaml` caps; attach a stop to each entry.
 6. **Stage** survivors for one-tap approval (never executes); **journal** every decision.
-7. **Deliver** — HTML dashboard + concise chat brief + completion push, and (optional) the same
-   brief to a **Telegram chat** you control — see [docs/RUNNING.md §8](docs/RUNNING.md#8-also-get-the-brief-on-telegram-optional).
+7. **Deliver** — HTML dashboard + concise chat brief + completion push, and a **Telegram
+   update**: a short summary plus the dashboard as a PDF attachment — see
+   [docs/RUNNING.md §8](docs/RUNNING.md#8-also-get-the-brief-on-telegram-optional).
 
 > **Setting this up?** [docs/RUNNING.md](docs/RUNNING.md) is the authoritative, step-by-step
 > guide: the two connectors and **where** to attach them, the Routine/schedule, paper-vs-live,
@@ -195,9 +196,8 @@ analysis/    portfolio analytics + CAN SLIM skill wiring
 risk/        guardrails: caps, paper/live gate, approval-shape checks
 signals/     stock-movement-monitor signal-feed consumer (candidate source)
 journal/     SQLite trade + rationale log
-reporting/   dashboard.py (HTML) · notify.py (Telegram out) · account_brief.py
-  commands.py    text-command router (read + watchlist; never trades)
-  telegram_bot.py two-way Telegram command bot (only your chat may command it)
+reporting/   dashboard.py (HTML) · account_brief.py (concise account summary)
+  notify.py      one-way Telegram delivery: summary text + dashboard PDF attachment
 workflows/   daily_review.py (scheduled entry point) + ROUTINE_PROMPT.md
 skills/      CAN SLIM skills (populated by scripts/setup_skills.sh; git-ignored)
 scripts/     setup_skills.sh
