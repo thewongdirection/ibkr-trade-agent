@@ -26,7 +26,10 @@ strategy:
     - etf
     - option
   # Default number of new ideas the recommend skill returns each review.
-  new_ideas_count: 20
+  # Keep this SMALL. Every candidate is CAN SLIM graded (many data calls each), so a large
+  # number makes a scheduled run so long it can be cut off before it delivers anything. 5 is
+  # a full morning's worth of actionable ideas; raise it only if runs are finishing early.
+  new_ideas_count: 5
 
 risk:
   # Hard caps enforced BEFORE an order is ever staged. An order breaching any of these

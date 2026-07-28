@@ -87,3 +87,31 @@ def deliver_brief(brief: str) -> dict[str, bool]:
     if telegram_configured():
         results["telegram"] = send_telegram(brief)
     return results
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Send a message from the command line: ``python -m reporting.notify "text"``.
+
+    Exists so a scheduled run can deliver a heartbeat or an interim brief in ONE shell command,
+    without the caller composing an inline Python snippet (and getting it subtly wrong). Reads
+    stdin when no argument is given, so a brief can be piped in. Exit code 0 = delivered.
+    """
+    import sys as _sys
+
+    args = list(_sys.argv[1:] if argv is None else argv)
+    text = " ".join(args).strip() if args else _sys.stdin.read().strip()
+    if not text:
+        print("usage: python -m reporting.notify \"message\"  (or pipe text on stdin)",
+              file=_sys.stderr)
+        return 2
+    if not telegram_configured():
+        print("[notify] Telegram not configured (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID unset).",
+              file=_sys.stderr)
+        return 1
+    ok = send_telegram(text)
+    print(f"[notify] telegram: {'sent' if ok else 'FAILED'}", file=_sys.stderr)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
