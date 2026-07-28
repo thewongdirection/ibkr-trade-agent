@@ -120,6 +120,31 @@ python -m workflows.daily_review --out dash.html   # also write the HTML dashboa
 `--stage` is what turns proposals into one-tap approval orders in IBKR. Without it the run is
 a dry run.
 
+> ### ⚠️ Known limitation — the IBKR connector in a *scheduled* session
+> A Routine fires a **headless** session, and in testing the **IBKR MCP connector never
+> responded there**: the run sent its first checkpoint, called IBKR, and stopped. A hung MCP
+> call cannot be timed out or recovered from inside the session, so the run ends silently.
+>
+> This was isolated with a bisect probe: Telegram delivery worked, multiple shell commands
+> worked, and the CAN SLIM skills installed — but the first IBKR call never returned. The same
+> connector works fine in an **interactive** chat session (the account reads instantly there),
+> so it is specific to headless/scheduled runs, not to your credentials or config.
+>
+> **What still works on a schedule:** everything that doesn't touch IBKR — Telegram delivery,
+> the skills, the dashboard render, the journal.
+>
+> **Options if you need an unattended review:**
+> 1. **Run it interactively** — ask the assistant to "run the daily IBKR review" in a chat.
+>    Fully working today; you just have to start it.
+> 2. **Self-host** — [HOSTING.md](HOSTING.md) Path B: a VM with IB Gateway + `ib_async`, binding
+>    the `TODO(connector)` transport in `agent/runtime.py`. Unattended, but real infrastructure
+>    and IBKR's 2FA/session rules apply.
+> 3. **Keep the Routine for the non-IBKR half** — market screening and delivery on schedule,
+>    with the account read done interactively.
+>
+> Worth re-testing occasionally: if a scheduled run ever gets past CHECKPOINT B, the connector
+> has started working headlessly and the full pipeline resumes with no code change.
+
 ### C. On a schedule — the daily Routine (recommended)
 
 This is the intended production path (zero infra). See [HOSTING.md](HOSTING.md) → **Path A**
@@ -346,6 +371,8 @@ Two things to know:
 | **No new ideas / grading errors** | FMP connector missing, or CAN SLIM skills not installed | Attach FMP; run `scripts/setup_skills.sh` |
 | Orders **not appearing for approval** | Ran without `--stage`, or in dry-run chat | Re-run with `--stage` (or tell the assistant to stage) |
 | Wrong **run time** | cron is UTC and the ET offset shifts with DST | Use `30 12 * * 1-5` (EDT) / `30 13 * * 1-5` (EST) |
+| Scheduled run sends the **first checkpoint then goes silent** | The IBKR connector did not respond in the headless session — see the box below | Run the review interactively, or self-host ([HOSTING.md](HOSTING.md) Path B) |
+| Skills missing **only in scheduled runs** | `github.com` not on that environment's allowlist, so the skills can't be cloned | Add `github.com` (bare host — **not** `www.github.com`) to Allowed domains |
 | **No Telegram message**, proxy `403` / tunnel error | `api.telegram.org` not allowlisted on the Routine's environment | Add `api.telegram.org` (bare host) to that environment's Allowed domains ([§8](#8-also-get-the-brief-on-telegram-optional) Step 3) |
 | **No Telegram message**, `chat not found` | Never messaged the bot, or wrong chat id | Message the bot once, re-read the id via `getUpdates` ([§8](#8-also-get-the-brief-on-telegram-optional) Step 1) |
 | **No Telegram message**, nothing at all | `TELEGRAM_*` vars set on the wrong environment (or not at all) | Set both vars on the environment your Routine actually uses ([§8](#8-also-get-the-brief-on-telegram-optional) Step 2 + Environments box) |
