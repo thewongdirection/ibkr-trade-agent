@@ -85,7 +85,11 @@ def _grade_to_buy_idea(symbol: str, grade: Grade, sector: str, reason: str):
 
 
 def run_daily_review(settings: Settings, ctx: DailyContext, *, stage: bool = False) -> DailyResult:
-    canslim.require_skills(settings)
+    # Skills are the grading/screening brain. If they aren't installed we DON'T crash the whole
+    # run (which would leave you with no brief at all) — we still read the account and deliver
+    # an informational brief, with a loud note and the one-line fix. See the `skills_ok` gate.
+    missing_skills = [name for name, ok in canslim.skills_installed(settings).items() if not ok]
+    skills_ok = not missing_skills
     journal = Journal(settings.journal_db_path)
     now = ctx.now or datetime.now(timezone.utc)
 
@@ -113,10 +117,24 @@ def run_daily_review(settings: Settings, ctx: DailyContext, *, stage: bool = Fal
                             "no orders staged.")
 
     held = {h.symbol for h in holdings}
+    sells: list[OrderProposal] = []
+    buy_ideas: list[dict[str, Any]] = []
+
+    if not skills_ok:
+        # Degrade, don't die: report the account, skip grading/screening, tell the user how to fix.
+        result.notes.append(
+            "CAN SLIM skills not installed (" + ", ".join(missing_skills) + ") — holdings "
+            "grading and new-idea screening were SKIPPED. Run scripts/setup_skills.sh in this "
+            "environment. The account state below is informational; no orders were proposed.")
+        for h in holdings:
+            result.management.append({
+                "symbol": h.symbol, "quantity": h.quantity, "market_value": h.market_value,
+                "pnl_pct": round(h.unrealized_pnl_pct, 1), "verdict": "n/a",
+                "action": "HOLD", "reason": "grading skipped — CAN SLIM skills not installed",
+            })
 
     # 1 — Manage existing holdings.
-    sells: list[OrderProposal] = []
-    for h in holdings:
+    for h in holdings if skills_ok else []:
         grade = ctx.grade_symbol(h.symbol)
         journal.record_grade(run_id, h.symbol, grade.verdict.value, grade.score_out_of_70,
                              grade.letters, grade.summary)
@@ -137,16 +155,14 @@ def run_daily_review(settings: Settings, ctx: DailyContext, *, stage: bool = Fal
                                     sector=h.sector, rationale=reason)
 
     # 2 — Gather NEW ideas: CAN SLIM screen + monitor signal feed.
-    buy_ideas: list[dict[str, Any]] = []
-
-    for rec in ctx.recommend_new(settings.new_ideas_count):
+    for rec in (ctx.recommend_new(settings.new_ideas_count) if skills_ok else []):
         if rec.symbol in held:
             continue
         buy_ideas.append({"symbol": rec.symbol, "price": rec.buy_point or rec.price,
                           "stop": rec.stop, "sector": rec.sector, "reason": rec.reason})
 
     signal_candidates: list[SignalCandidate] = to_candidates(
-        ctx.load_signals(), now=now, exclude=held)
+        ctx.load_signals(), now=now, exclude=held) if skills_ok else []
     for cand in signal_candidates:
         grade = ctx.grade_symbol(cand.ticker)
         journal.record_grade(run_id, cand.ticker, grade.verdict.value, grade.score_out_of_70,
@@ -291,18 +307,26 @@ def main(argv: list[str] | None = None) -> int:
               "Skipping. Use --force to run anyway.")
         return 0
 
+    from reporting.notify import deliver_brief
+
     ctx = DailyContext()  # TODO(connector): back with IBKR/FMP + skills + signal feed.
     try:
         result = run_daily_review(settings, ctx, stage=args.stage)
     except (RuntimeError, FileNotFoundError) as exc:
-        print(f"\nCannot run end-to-end yet: {exc}", file=sys.stderr)
+        # Never go silent: deliver a failure brief so you learn WHY, not just that nothing came.
+        fail = (f"{mode_banner(settings)}\n"
+                f"IBKR daily review could NOT complete: {exc}\n"
+                "No orders were staged. Common causes: IBKR connector not attached, account "
+                "identity mismatch, or CAN SLIM skills not installed (scripts/setup_skills.sh).")
+        print(fail, file=sys.stderr)
+        for channel, ok in deliver_brief(fail).items():
+            print(f"[deliver] {channel}: {'sent' if ok else 'FAILED'}", file=sys.stderr)
         return 2
 
     brief = chat_brief(result, settings)
     print(brief)
 
     # Optional out-of-band delivery (Telegram, if configured). Never fails the run.
-    from reporting.notify import deliver_brief
     for channel, ok in deliver_brief(brief).items():
         print(f"[deliver] {channel}: {'sent' if ok else 'FAILED'}", file=sys.stderr)
 

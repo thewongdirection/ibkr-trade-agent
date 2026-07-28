@@ -78,6 +78,27 @@ def _funded_context(**overrides):
     return ctx, staged
 
 
+def test_missing_skills_degrades_not_crashes(settings, tmp_path):
+    """No skills installed → review still reads the account and delivers, never raises."""
+    # Remove the stub skills the fixture created.
+    for name in ("can-slim-recommend", "can-slim-grader"):
+        (tmp_path / name / "SKILL.md").unlink()
+
+    ctx, staged = _funded_context()
+    result = run_daily_review(settings, ctx, stage=True)  # must NOT raise
+
+    # Grading/screening skipped: no proposals, no signal candidates, holding shown informationally.
+    assert result.proposals == []
+    assert result.signal_candidates == []
+    assert staged == []
+    assert result.management and result.management[0]["action"] == "HOLD"
+    assert result.management[0]["verdict"] == "n/a"
+    # A loud, actionable note is present and mentions the fix.
+    assert any("setup_skills.sh" in n for n in result.notes)
+    # The brief still renders (so it can be delivered to Telegram/chat).
+    assert "review" in chat_brief(result, settings).lower()
+
+
 def test_daily_review_both_sources(settings):
     ctx, staged = _funded_context()
     result = run_daily_review(settings, ctx, stage=True)
