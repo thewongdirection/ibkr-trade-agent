@@ -29,15 +29,21 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export PYTHONPATH=\"${CLAUDE_PROJECT_DIR:-$PWD}:\${PYTHONPATH:-}\"" >> "$CLAUDE_ENV_FILE"
 fi
 
-# The skills live in separate repos. A clone failure must NOT abort the session — the review
-# degrades gracefully — so warn loudly and continue.
+# The skills live in separate GitHub repos, so this step needs egress to github.com. On an
+# environment with a custom network allowlist that omits github.com, a clone can HANG rather
+# than fail — which would freeze session startup (this hook is synchronous). Hard-timeout it:
+# a missing skill only degrades the review, but a hung session delivers nothing at all.
 echo "[session-start] installing CAN SLIM skills…"
-if bash scripts/setup_skills.sh >/dev/null 2>&1; then
+export GIT_TERMINAL_PROMPT=0        # never block waiting for credentials
+export GIT_ASKPASS=true
+if timeout 120 bash scripts/setup_skills.sh >/dev/null 2>&1; then
   echo "[session-start] skills OK: $(ls -1 skills | grep -c can-slim || true) installed"
 else
-  echo "[session-start] WARNING: could not install CAN SLIM skills."
+  echo "[session-start] WARNING: could not install CAN SLIM skills (failed or timed out)."
   echo "[session-start]   The daily review will run in INFORMATIONAL mode (no grading/screening)."
-  echo "[session-start]   Fix: check access to the can-slim-recommend / can-slim-grader repos."
+  echo "[session-start]   Most likely cause: this environment's network allowlist does not"
+  echo "[session-start]   include github.com, so the skill repos can't be cloned. Add it, or"
+  echo "[session-start]   check access to can-slim-recommend / can-slim-grader."
 fi
 
 echo "[session-start] ready."

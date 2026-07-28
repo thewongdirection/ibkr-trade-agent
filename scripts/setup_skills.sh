@@ -8,14 +8,21 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$REPO_ROOT/skills"
 mkdir -p "$SKILLS_DIR"
 
+# Never hang: on an environment whose network allowlist omits github.com, git can block
+# indefinitely instead of failing. Disable credential prompts and cap each operation, so a
+# caller (notably the synchronous SessionStart hook) always gets control back.
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=true
+GIT_TIMEOUT="${GIT_TIMEOUT:-60}"
+
 clone_or_update() {
   local name="$1" url="$2" dest="$SKILLS_DIR/$1"
   if [ -d "$dest/.git" ]; then
     echo "Updating $name..."
-    git -C "$dest" pull --ff-only
+    timeout "$GIT_TIMEOUT" git -C "$dest" pull --ff-only
   else
     echo "Cloning $name..."
-    git clone --depth 1 "$url" "$dest"
+    timeout "$GIT_TIMEOUT" git clone --depth 1 "$url" "$dest"
   fi
 }
 
