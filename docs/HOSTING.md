@@ -77,6 +77,8 @@ This path replaces that transport: `ib_async` talking to a local **IB Gateway** 
 which has no such limitation. It is a real operational commitment (a VM, IB Gateway kept alive,
 IBKR's daily re-auth and 2FA), but it is the one that runs on its own.
 
+Why this module exists even though it's off by default: [DECISIONS.md — ADR-001](DECISIONS.md).
+
 **The code is in place** — `broker/gateway.py` implements the same `BrokerClient` protocol as
 the MCP path, so the review, risk layer, dashboard and journal are untouched. Switching is a
 config change, not a code change. Orders are staged with **`transmit=False`**: they appear in

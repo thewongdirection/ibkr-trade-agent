@@ -1,12 +1,27 @@
 """Self-hosted IBKR transport — talk to IB Gateway / TWS directly instead of the MCP connector.
 
+STATUS: inactive by default (``gateway.transport: mcp``). This module is deliberately kept
+even though nothing runs it out of the box — see **docs/DECISIONS.md, ADR-001** before
+deleting it as dead code.
+
 Why this exists
 ---------------
-The MCP connector works beautifully in an interactive Claude session but does **not respond in
-a headless scheduled session** (see docs/RUNNING.md, "Known limitation"). That makes unattended
-runs impossible through it. This module is the alternative: a direct socket connection to a
-locally-running **IB Gateway** (or TWS) via ``ib_async``, so a cron job / systemd timer on your
-own VM can read the account and stage orders with no Claude session involved.
+The MCP connector works perfectly in an *interactive* Claude session — an account read returns
+instantly — but it does **not respond in a headless scheduled session**. That was isolated with
+a bisect probe that pinged Telegram around every step: "alive", "second bash OK" and "about to
+call IBKR" all arrived; the ping *after* the IBKR call never did. A hung MCP call cannot be
+timed out or caught from inside the session, so a scheduled run just ends, silently. It is not
+a credentials or config problem, and it is not a turn limit (the second shell command proves
+that) — it is specific to headless execution.
+
+The consequence: **through the connector alone, an unattended run cannot read your account.**
+This module is the alternative — a direct socket to a locally-running **IB Gateway** (or TWS)
+via ``ib_async``, so a systemd timer on your own VM can read the account and stage orders with
+no Claude session involved.
+
+Re-test occasionally: if a scheduled run ever gets past its post-account checkpoint, the
+connector has started working headlessly and this path becomes optional. No code change is
+needed either way — the transport is a config line.
 
 It implements the SAME :class:`broker.client.BrokerClient` protocol as ``MCPBrokerClient``, so
 everything downstream — the review, risk layer, dashboard, journal — is unchanged. Which

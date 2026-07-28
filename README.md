@@ -186,8 +186,9 @@ To run it automatically each weekday, point a Routine / cron entry at
 agent/       Agent SDK runtime, settings loader (paper/live interlock), system prompt
 broker/      IBKR connection, account retrieval, identity verify, mode switching
   client.py    typed AccountSummary/Balance/Position/Trade/Order + parsers
-  gateway.py   self-hosted transport: local IB Gateway/TWS via ib_async (unattended runs;
-               stages with transmit=False, enforces the mode/port interlock)
+  gateway.py   self-hosted transport: local IB Gateway/TWS via ib_async. INACTIVE by
+               default — kept because the MCP connector doesn't answer in headless
+               scheduled runs; see docs/DECISIONS.md ADR-001 before deleting
   session.py   connection + account-identity verification ("login")
   account.py   CLI: account info, positions, orders, trade history
   mode.py      CLI: paper<->live switch (honors the two-switch interlock)
@@ -200,7 +201,8 @@ reporting/   dashboard.py — self-contained HTML dashboard
 workflows/   daily_review.py (scheduled entry point) + ROUTINE_PROMPT.md
 skills/      CAN SLIM skills (populated by scripts/setup_skills.sh; git-ignored)
 scripts/     setup_skills.sh
-docs/        RUNNING.md (setup & run), CONNECTING.md, HOSTING.md, INTEGRATION.md
+docs/        RUNNING.md (setup & run), CONNECTING.md, HOSTING.md, INTEGRATION.md,
+             DECISIONS.md (why the code looks like this — read before deleting)
 tests/       guardrail, broker, signals, and review-workflow tests
 config.yaml  caps, universe, cadence, paper/live switch, identity markers
 ```

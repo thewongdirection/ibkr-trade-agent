@@ -144,6 +144,9 @@ a dry run.
 >
 > Worth re-testing occasionally: if a scheduled run ever gets past CHECKPOINT B, the connector
 > has started working headlessly and the full pipeline resumes with no code change.
+>
+> The full evidence, and why the gateway transport is kept even though it's off by default, is
+> recorded in [DECISIONS.md — ADR-001](DECISIONS.md).
 
 ### C. On a schedule — the daily Routine (recommended)
 
@@ -358,6 +361,7 @@ fill on its own, and *you* press Transmit. `transmit=True` appears nowhere in th
 Plus `readonly: true` (the default) blocks order placement at the API level entirely.
 
 Full VM/IBC/2FA walkthrough and the systemd timer: [HOSTING.md](HOSTING.md) → **Path B**.
+Why this transport exists at all: [DECISIONS.md — ADR-001](DECISIONS.md).
 
 ---
 
@@ -401,4 +405,6 @@ Full VM/IBC/2FA walkthrough and the systemd timer: [HOSTING.md](HOSTING.md) → 
 - [CONNECTING.md](CONNECTING.md) — how the IBKR connection works, no-credentials policy, identity verification
 - [HOSTING.md](HOSTING.md) — the three hosting paths (Routine / VM / GitHub Actions) in depth
 - [INTEGRATION.md](INTEGRATION.md) — the stock-movement-monitor signal-feed contract
+- [DECISIONS.md](DECISIONS.md) — why the code looks like this (read before deleting anything
+  that appears unused)
 - [`workflows/ROUTINE_PROMPT.md`](../workflows/ROUTINE_PROMPT.md) — the exact standalone prompt the Routine fires
