@@ -261,6 +261,62 @@ placeholders are tracked. The **chat id does not change** if you swap the bot to
 (it identifies the chat, not the bot) — but a brand-new bot still needs the one-time
 "message it once" from Step 1.
 
+## 9. On-demand commands (account, positions, watchlists)
+
+Beyond the scheduled review, you can query the account and curate watchlists **on demand** —
+three ways, from lightest to most hands-off.
+
+### A. Just ask, in a Claude chat
+In any session with the IBKR connector attached, ask in plain English — *"summarize my account
+and positions"*, *"add NVDA and AVGO to my Leaders watchlist"*. The read tools and the (gated)
+watchlist-write tools are wired for exactly this.
+
+### B. CLIs
+```bash
+account-summary                      # concise balances + exposure + P&L + top positions
+account-summary --all                # verbose: + balances by currency, orders, 90-day trades
+watchlist list                       # your IBKR watchlists
+watchlist show Leaders               # one list's instruments
+watchlist add Leaders NVDA AVGO      # add symbols (creates the list if it's new)
+watchlist remove Leaders AVGO        # remove symbols
+watchlist delete Leaders             # delete a list
+```
+Symbols are resolved to IBKR contract ids automatically (`search_contracts`); anything that
+can't be resolved is reported, not silently dropped. `edit`/`add`/`remove` use IBKR's
+full-replace semantics under the hood (read → modify → write), so lists never get clobbered.
+
+### C. Two-way Telegram bot — text the bot, it replies
+The same Telegram bot that delivers your brief can also **take commands**. Message it:
+
+| Command | Does |
+|---|---|
+| `/account` | balances, exposure, P&L, top positions |
+| `/positions` | full positions list |
+| `/watchlists` | your watchlists |
+| `/watchlist <name>` | show one list's instruments |
+| `/watch <name> <SYM…>` | add symbols (creates the list if new) |
+| `/unwatch <name> <SYM…>` | remove symbols |
+| `/delete <name>` | delete a list (asks you to confirm) |
+| `/help` | the command list |
+
+Run the poller:
+```bash
+telegram-bot --once     # drain any pending commands and exit (drive from a scheduler)
+telegram-bot --loop     # long-poll continuously (for a self-hosted process)
+```
+
+Two things to know:
+- **Only your chat can command it.** Every message whose `chat.id` ≠ `TELEGRAM_CHAT_ID` is
+  ignored and logged, so a stranger who finds the bot can't read your account or touch your
+  lists. Commands are **read + watchlist only** — there is no command that places or approves a
+  trade; order flow stays in the reviewed, human-approved path.
+- **It needs the connector bound to answer with live data** — same requirement as everything
+  else here (`TODO(connector)`): run it inside a Claude session with the IBKR connector, or
+  bind an SDK MCP transport for a standalone process. Unbound, it replies that data isn't
+  available rather than failing. The last-seen message id is persisted (next to the journal db)
+  so `--once` never re-answers an old message. Because a Routine cron fires at most hourly, the
+  `--loop`/self-hosted path is what gives near-real-time replies.
+
 ---
 
 ## What each daily run does (the 7 steps)

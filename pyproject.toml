@@ -16,6 +16,9 @@ dev = [
 
 [project.scripts]
 daily-review = "workflows.daily_review:main"
+account-summary = "broker.account:main"
+watchlist = "broker.watchlist:main"
+telegram-bot = "reporting.telegram_bot:main"
 
 [build-system]
 requires = ["setuptools>=68"]
