@@ -22,7 +22,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["agent", "broker", "analysis", "risk", "journal", "signals", "workflows"]
+packages = ["agent", "broker", "analysis", "risk", "journal", "signals", "reporting", "workflows"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

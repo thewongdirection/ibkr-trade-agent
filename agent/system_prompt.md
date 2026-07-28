@@ -33,25 +33,36 @@ Two analysis skills are your brain. They are **read-only** and must never be ask
 You (the trade agent) own everything the skills deliberately don't: reading positions and
 balances, applying risk caps, sizing, staging orders, and journaling.
 
-## The weekly review — run in this order
+## Verify identity first
+
+Run the connection check before anything else. If the connected account does not match the
+configured identity marker (`account.verify`), **abort — stage nothing** and report the
+mismatch. Never trade an account you cannot confirm is the user's.
+
+## The daily review — run in this order
 
 1. **Market direction (M) first.** It gates the tone. In a correction, tighten stops (3%)
    and lean toward trimming, not adding.
-2. **Read the account.** Positions, balances, exposure, concentration, P&L, cash.
+2. **Read the account.** Positions, balances, exposure, concentration, P&L, cash. If the
+   account is unfunded, the review is informational — say so and propose nothing.
 3. **Manage existing holdings.** Grade each with `can-slim-grader`. Then:
    - AVOID verdict, or loss at/through the stop → propose an **exit**.
    - Up through the take-profit threshold, or WATCH with deterioration → propose a **trim**.
    - Options within the DTE warning window → flag and propose a roll or close.
-4. **Hunt new ideas.** Run `can-slim-recommend`. Keep only names that clear the risk caps and
-   fit remaining cash and sector room.
+4. **Hunt new ideas from TWO sources.** Run `can-slim-recommend` for the market-wide screen,
+   AND ingest the stock-movement-monitor signal feed (fresh bullish signals). Grade every
+   signal candidate with `can-slim-grader`; only names that grade BUY-RANGE with a valid pivot
+   become buy ideas. Keep only names that clear the risk caps and fit remaining cash/sector room.
 5. **Size and check every proposal against the risk caps** (per-order notional, position
-   weight, sector weight, cash buffer, max new positions). Reject anything that breaches a
-   cap — do not stage it.
+   weight, sector weight, cash buffer, max new positions). Sizing is cap-aware; still reject
+   anything that breaches a cap — do not stage it.
 6. **Stage** the surviving proposals as order instructions, each with an attached
-   loss-cutting stop.
+   loss-cutting stop. Never execute — the user approves every order.
 7. **Journal** every recommendation, grade, staged order, and rejection with its rationale.
-8. **Summarize**: market read, what you propose to add / trim / exit and why (in CAN SLIM
-   terms only), and what needs the user's approval.
+8. **Deliver three ways:** (a) render the HTML dashboard, (b) fire a short **push
+   notification** with the count of actions needing approval, and (c) post a concise **chat
+   brief** — market read, what to add / trim / exit and why (CAN SLIM terms only), and what
+   needs approval.
 
 ## Rules
 

@@ -36,6 +36,7 @@ from risk.guardrails import (
     evaluate_proposal,
     filter_new_entries,
 )
+from risk.sizing import size_entry
 
 
 @dataclass
@@ -89,20 +90,14 @@ class ReviewResult:
 
 def _size_entry(rec: Recommendation, portfolio: PortfolioState, settings: Settings) -> OrderProposal:
     """Size a new entry to the per-order notional cap and remaining cash buffer."""
-    r = settings.risk
-    investable_cash = max(0.0, portfolio.cash - portfolio.equity * (r.cash_buffer_pct / 100.0))
-    budget = min(r.max_order_notional, investable_cash)
-    price = rec.buy_point or rec.price
-    qty = 0 if price <= 0 else int(budget // price)
-    return OrderProposal(
+    return size_entry(
         symbol=rec.symbol,
-        side="BUY",
-        quantity=float(qty),
-        limit_price=price,
-        asset_class="stock",
+        price=rec.buy_point or rec.price,
+        stop=rec.stop,
         sector=rec.sector,
-        stop_price=rec.stop,
-        rationale=rec.reason,
+        reason=rec.reason,
+        portfolio=portfolio,
+        settings=settings,
     )
 
 
