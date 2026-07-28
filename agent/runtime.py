@@ -38,13 +38,6 @@ IBKR_READ_TOOLS = (
 # Staging only. Approval/execution is done by the user in IBKR, never by a tool call here.
 IBKR_STAGE_TOOLS = ("create_order_instruction", "delete_order_instruction")
 
-# Watchlist management — the only *account write* outside order staging. Enabled for the
-# command bot (reporting.telegram_bot) so you can curate lists on demand. These do NOT touch
-# balances, positions, or orders, and the CAN SLIM skills are NOT granted them (see
-# analysis.canslim.CANSLIM_READONLY_TOOLS, which stays read-only). `delete_watchlist` is
-# additionally guarded behind an explicit CONFIRM at the command layer.
-IBKR_WATCHLIST_WRITE_TOOLS = ("create_watchlist", "edit_watchlist", "delete_watchlist")
-
 BLOCKED_TOOLS: tuple[str, ...] = ()  # reserved: any tool that would auto-execute a trade
 
 
@@ -143,26 +136,6 @@ def build_broker_client(settings: Settings | None = None):
     from broker.client import MCPBrokerClient
 
     return MCPBrokerClient(_unbound_tool_caller)
-
-
-def build_watchlist_manager(settings: Settings | None = None):
-    """Return a WatchlistManager bound to the IBKR MCP connector.
-
-    Watchlist create/edit/delete are account writes, so — like order staging — they only work
-    with a live transport bound. TODO(connector): bind a ``ToolCaller`` to the real transport
-    (shared with ``build_broker_client``); until then this raises a clear, actionable error.
-    """
-    settings = settings or load_settings()
-
-    def _unbound_tool_caller(tool_name: str, args: dict):  # pragma: no cover - guard path
-        raise RuntimeError(
-            "No IBKR MCP transport is bound. Run inside a Claude session with the IBKR "
-            "connector attached, or wire an Agent SDK MCP client (see TODO(connector))."
-        )
-
-    from broker.watchlist import WatchlistManager
-
-    return WatchlistManager(_unbound_tool_caller)
 
 
 def mode_banner(settings: Settings) -> str:

@@ -286,33 +286,9 @@ placeholders are tracked. The **chat id does not change** if you swap the bot to
 (it identifies the chat, not the bot) — but a brand-new bot still needs the one-time
 "message it once" from Step 1.
 
-## 9. On-demand commands (account, positions, watchlists)
+## 9. Telegram — a one-way update each run
 
-Beyond the scheduled review, you can query the account and curate watchlists **on demand** —
-three ways, from lightest to most hands-off.
-
-### A. Just ask, in a Claude chat
-In any session with the IBKR connector attached, ask in plain English — *"summarize my account
-and positions"*, *"add NVDA and AVGO to my Leaders watchlist"*. The read tools and the (gated)
-watchlist-write tools are wired for exactly this.
-
-### B. CLIs
-```bash
-account-summary                      # concise balances + exposure + P&L + top positions
-account-summary --all                # verbose: + balances by currency, orders, 90-day trades
-watchlist list                       # your IBKR watchlists
-watchlist show Leaders               # one list's instruments
-watchlist add Leaders NVDA AVGO      # add symbols (creates the list if it's new)
-watchlist remove Leaders AVGO        # remove symbols
-watchlist delete Leaders             # delete a list
-```
-Symbols are resolved to IBKR contract ids automatically (`search_contracts`); anything that
-can't be resolved is reported, not silently dropped. `edit`/`add`/`remove` use IBKR's
-full-replace semantics under the hood (read → modify → write), so lists never get clobbered.
-
-### C. Telegram — a one-way update each run
-
-The scheduled bot **sends you an update; it does not take commands.** Every run delivers:
+The bot **sends you an update; it does not take commands.** Every run delivers two things:
 
 1. a **short text summary** you can read on a lock screen — mode, market read, equity/cash,
    holdings actions, orders awaiting approval with a one-line CAN SLIM reason, and warnings;
@@ -325,13 +301,16 @@ That's `reporting.notify.deliver_report()`, which the review calls for you:
 daily-review --stage                      # runs, then sends summary + dashboard PDF
 python -m reporting.notify "any message"  # send an ad-hoc line
 ```
-```python
-from reporting.notify import deliver_report
-deliver_report(brief, dashboard_path="dashboard.html")
-```
 
 Delivery never fails the run: a Telegram outage is logged rather than raised, and a missing
-PDF converter just means the HTML is attached instead.
+PDF converter only downgrades the attachment to HTML.
+
+To inspect the account by hand outside a run:
+
+```bash
+account-summary            # summary + balances + positions + open orders
+account-summary --all      # + 90-day trade history
+```
 
 ---
 

@@ -190,13 +190,12 @@ broker/      IBKR connection, account retrieval, identity verify, mode switching
                stages with transmit=False, enforces the mode/port interlock)
   session.py   connection + account-identity verification ("login")
   account.py   CLI: account info, positions, orders, trade history
-  watchlist.py CLI + manager: create/edit/delete IBKR watchlists (gated write)
   mode.py      CLI: paper<->live switch (honors the two-switch interlock)
 analysis/    portfolio analytics + CAN SLIM skill wiring
 risk/        guardrails: caps, paper/live gate, approval-shape checks
 signals/     stock-movement-monitor signal-feed consumer (candidate source)
 journal/     SQLite trade + rationale log
-reporting/   dashboard.py (HTML) · account_brief.py (concise account summary)
+reporting/   dashboard.py — self-contained HTML dashboard
   notify.py      one-way Telegram delivery: summary text + dashboard PDF attachment
 workflows/   daily_review.py (scheduled entry point) + ROUTINE_PROMPT.md
 skills/      CAN SLIM skills (populated by scripts/setup_skills.sh; git-ignored)
